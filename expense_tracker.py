@@ -1,52 +1,53 @@
+import streamlit as st
 import csv
+import pandas as pd
 from collections import defaultdict
+from datetime import datetime
 
-def add_expense():
-    date = input("Enter date (YYYY-MM-DD): ")
-    category = input("Enter category (Food, Travel, etc.): ")
-    amount = input("Enter amount: ")
-    description = input("Enter description: ")
+FILE_NAME = 'expenses.csv'
 
-    with open('expenses.csv', mode='a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([date, category, amount, description])
-    
-    print("Expense added!\n")
+def add_expense_ui():
+    st.subheader("➕ Add a New Expense")
 
-def view_summary():
-    total = 0
-    category_totals = defaultdict(float)
+    date = st.date_input("Date", datetime.today())
+    category = st.selectbox("Category", ["Food", "Travel", "Shopping", "Bills", "Other"])
+    amount = st.number_input("Amount", min_value=0.0, format="%.2f")
+    description = st.text_input("Description")
 
-    with open('expenses.csv', mode='r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            amount = float(row['amount'])
-            total += amount
-            category_totals[row['category']] += amount
+    if st.button("Add Expense"):
+        with open(FILE_NAME, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([date, category, amount, description])
+        st.success("Expense added!")
 
-    print(f"Total expenses: ${total:.2f}")
-    print("Expenses by category:")
-    for cat, amt in category_totals.items():
-        print(f"  {cat}: ${amt:.2f}")
-    print()
+def view_summary_ui():
+    st.subheader("📊 Expense Summary")
+
+    try:
+        df = pd.read_csv(FILE_NAME)
+        df['amount'] = df['amount'].astype(float)
+    except FileNotFoundError:
+        st.info("No expenses added yet.")
+        return
+
+    st.dataframe(df)
+
+    total = df['amount'].sum()
+    st.markdown(f"### 💵 Total Spent: ${total:.2f}")
+
+    chart = df.groupby('category')['amount'].sum()
+    st.bar_chart(chart)
 
 def main():
-    while True:
-        print("Choose an option:")
-        print("1. Add Expense")
-        print("2. View Summary")
-        print("3. Exit")
-        choice = input("Enter choice: ")
+    st.title("💰 Simple Expense Tracker")
 
-        if choice == '1':
-            add_expense()
-        elif choice == '2':
-            view_summary()
-        elif choice == '3':
-            print("Goodbye!")
-            break
-        else:
-            print("Invalid choice. Please try again.\n")
+    menu = ["Add Expense", "View Summary"]
+    choice = st.sidebar.selectbox("Menu", menu)
 
-if __name__ == "__main__":
+    if choice == "Add Expense":
+        add_expense_ui()
+    elif choice == "View Summary":
+        view_summary_ui()
+
+if __name__ == '__main__':
     main()
